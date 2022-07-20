@@ -1,13 +1,13 @@
 kind: pipeline
 type: docker
-name: vue-study
+name: vueNewDemo2022
 
 #设置挂载
 volumes:
   #Vue编译缓存目录
   - name: cache # 数据卷名称
     host: # Host Volume
-      path: /home/drone/cache/vue-studys # 宿主机目录    #绝对路径
+      path: /home/drone/cache/vueNewDemo2022 # 宿主机目录    #绝对路径
   #Docker环境
   - name: docker
     host:
