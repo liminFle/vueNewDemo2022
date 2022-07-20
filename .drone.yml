@@ -117,15 +117,27 @@ steps:
     script:
       - cd /home/dockerConfig/project/vueNewDemo2022
       - docker-compose pull && docker-compose up --force-recreate -d
-#通知发到telegram
-- name: telegram
-  pull: if-not-exists
-  image: hongzhuangxian/telegram-drone-plugin
+# #通知发到telegram
+# - name: telegram
+#   pull: if-not-exists
+#   image: hongzhuangxian/telegram-drone-plugin
+#   settings:
+#     proxy_url: "https://telegram.hongzhuangxian.cn"
+#     token:
+#       from_secret: telegram_token
+#     chat_id:
+#       from_secret: telegram_chat_id
+
+
+      #通知发到手机设备
+- name: pushdeer
+  image: hongzhuangxian/pushdeer-drone-plugin
   settings:
-    proxy_url: "https://telegram.hongzhuangxian.cn"
-    token:
-      from_secret: telegram_token
-    chat_id:
-      from_secret: telegram_chat_id
+    pushkey: PDU13655TRzPokqo2U87W2uTEGVigs2ZKO4AsBvcD
+    url: https://api2.pushdeer.com/message/push
+    messageType: text
+# #规定master分支
+# branches: master
+
 #规定master分支，触发构建
 branches: master
