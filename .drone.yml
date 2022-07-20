@@ -1,0 +1,131 @@
+kind: pipeline
+type: docker
+name: vue-study
+
+#设置挂载
+volumes:
+  #Vue编译缓存目录
+  - name: cache # 数据卷名称
+    host: # Host Volume
+      path: /home/drone/cache/vue-studys # 宿主机目录    #绝对路径
+  #Docker环境
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+  #Docker配置
+  - name: docker-daemon
+    host:
+      path: /etc/docker/daemon.json
+#构建步骤
+steps:
+#设置全局配置
+- name: clean
+  image: docker:19.03.1
+  pull: if-not-exists
+  network_mode: host
+  # 将宿主机的 docker和配置挂载到运行的 docker 容器中，那么在容器中运行 docker 命令时，等同于在宿主机中运行该docker 命令
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+    - name: images
+      path: /images
+    - name: docker-daemon
+      path: /etc/docker/daemon.json
+#加载缓存
+- name: restore-cache
+  image: drillster/drone-volume-cache
+  pull: if-not-exists
+  settings:
+    restore: true
+    mount:
+      - ./.npm-cache
+      - ./node_modules
+  volumes:
+    - name: cache
+      path: /cache
+#node安装
+- name: npm-install
+  image: node:10
+  pull: if-not-exists
+  volumes: # 挂载数据卷（此为容器内的目录）
+    - name: node_modules # 数据卷名称
+      path: /drone/src/node_modules # 容器内目录 绝对路径
+    - name: deploy_path
+      path: /drone/src/html
+  commands:
+    - npm config set cache ./.npm-cache --global
+    - npm install
+#打包
+- name: build-dist
+  image: node:10
+  pull: if-not-exists
+  volumes: # 挂载数据卷（此为容器内的目录）
+    - name: node_modules # 数据卷名称
+      path: /drone/src/node_modules # 容器内目录 绝对路径
+    - name: deploy_path
+      path: /drone/src/html
+  commands:
+    - npm run build
+#构建缓存
+- name: rebuild-cache
+  image: drillster/drone-volume-cache
+  pull: if-not-exists
+  settings:
+    rebuild: true
+    mount:
+      - ./.npm-cache
+      - ./node_modules
+  volumes:
+    - name: cache
+      path: /cache
+#推送镜像至镜像仓库
+- name: publish
+  image: plugins/docker
+  pull: if-not-exists
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+    - name: cache
+      path: /cache
+  mirrors:       #镜像仓库加速地址，不需要加速，可以直接删除
+    from_secret: registry_mirrors
+  settings:
+    purge: false
+    registry:   #镜像仓库域名
+      from_secret: registry
+    repo:        #镜像仓库详细地址
+      from_secret: repo
+    use_cache: true
+    tags:
+      - latest
+    username:    #镜像仓库账户
+      from_secret: registry_user_name
+    password:    #镜像仓库密码
+      from_secret: registry_password
+#部署容器服务
+- name: ssh commands
+  image: appleboy/drone-ssh
+  pull: if-not-exists
+  settings:
+    host:
+      from_secret: ssh_ip
+    port: 22
+    username:
+      from_secret: ssh_user_name
+    password:
+      from_secret: ssh_password
+    script:
+      - cd /home/dockerConfig/project/vue-study
+      - docker-compose pull && docker-compose up --force-recreate -d
+#通知发到telegram
+- name: telegram
+  pull: if-not-exists
+  image: hongzhuangxian/telegram-drone-plugin
+  settings:
+    proxy_url: "https://telegram.hongzhuangxian.cn"
+    token:
+      from_secret: telegram_token
+    chat_id:
+      from_secret: telegram_chat_id
+#规定master分支，触发构建
+branches: master
