@@ -115,7 +115,7 @@ steps:
     password:
       from_secret: ssh_password
     script:
-      - cd /home/dockerConfig/project/vue-study
+      - cd /home/dockerConfig/project/vueNewDemo2022
       - docker-compose pull && docker-compose up --force-recreate -d
 #通知发到telegram
 - name: telegram
